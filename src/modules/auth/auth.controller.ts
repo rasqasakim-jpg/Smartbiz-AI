@@ -77,7 +77,7 @@ const generateOtp = () => {
 
 const sendOtpEmail = async (email: string, code: string) => {
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"SmartBiz AI"<${process.env.EMAIL_USER}>`,
     to: email,
     subject: "SmartBiz AI - Kode OTP",
     html: `
