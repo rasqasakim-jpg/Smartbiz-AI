@@ -11,19 +11,67 @@ const getUserBusinessId = async (userId: string) => {
   return user?.businessId;
 };
 
+const generateSku = () => {
+  const date = new Date();
+  const datePart = date.toISOString().slice(0, 10).replace(/-/g, "");
+  const randomPart = Math.floor(100000 + Math.random() * 900000);
+
+  return `PRD-${datePart}-${randomPart}`;
+};
+
+const validateNumberField = (
+  value: unknown,
+  fieldName: string
+): string | null => {
+  if (value === undefined) return null;
+
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return `${fieldName} harus berupa angka`;
+  }
+
+  if (numberValue < 0) {
+    return `${fieldName} tidak boleh negatif`;
+  }
+
+  return null;
+};
+
 export const createProduct = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { name, sku, description, price, stock, minStock } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
-    if (!name || !sku || price === undefined) {
+    if (!name || price === undefined) {
       return res.status(400).json({
         success: false,
-        message: "name, sku, dan price wajib diisi",
+        message: "name dan price wajib diisi",
+      });
+    }
+
+    if (!String(name).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Nama product tidak boleh kosong",
+      });
+    }
+
+    const priceError = validateNumberField(price, "Price");
+    const stockError = validateNumberField(stock, "Stock");
+    const minStockError = validateNumberField(minStock, "Min stock");
+
+    if (priceError || stockError || minStockError) {
+      return res.status(400).json({
+        success: false,
+        message: priceError || stockError || minStockError,
       });
     }
 
@@ -36,10 +84,12 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const finalSku = sku ? String(sku).trim() : generateSku();
+
     const existingProduct = await prisma.product.findFirst({
       where: {
         businessId,
-        sku,
+        sku: finalSku,
       },
     });
 
@@ -52,8 +102,8 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
 
     const product = await prisma.product.create({
       data: {
-        name,
-        sku,
+        name: String(name).trim(),
+        sku: finalSku,
         description,
         price,
         stock: stock ?? 0,
@@ -82,7 +132,10 @@ export const getProducts = async (req: AuthRequest, res: Response) => {
     const search = req.query.search ? String(req.query.search) : undefined;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const businessId = await getUserBusinessId(userId);
@@ -130,7 +183,10 @@ export const getProductById = async (req: AuthRequest, res: Response) => {
     const id = String(req.params.id);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const businessId = await getUserBusinessId(userId);
@@ -177,7 +233,28 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
     const { name, sku, description, price, stock, minStock } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (name !== undefined && !String(name).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Nama product tidak boleh kosong",
+      });
+    }
+
+    const priceError = validateNumberField(price, "Price");
+    const stockError = validateNumberField(stock, "Stock");
+    const minStockError = validateNumberField(minStock, "Min stock");
+
+    if (priceError || stockError || minStockError) {
+      return res.status(400).json({
+        success: false,
+        message: priceError || stockError || minStockError,
+      });
     }
 
     const businessId = await getUserBusinessId(userId);
@@ -203,11 +280,13 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (sku && sku !== existingProduct.sku) {
+    const trimmedSku = sku !== undefined ? String(sku).trim() : undefined;
+
+    if (trimmedSku && trimmedSku !== existingProduct.sku) {
       const duplicateSku = await prisma.product.findFirst({
         where: {
           businessId,
-          sku,
+          sku: trimmedSku,
           NOT: {
             id,
           },
@@ -225,8 +304,8 @@ export const updateProduct = async (req: AuthRequest, res: Response) => {
     const product = await prisma.product.update({
       where: { id },
       data: {
-        ...(name && { name }),
-        ...(sku && { sku }),
+        ...(name !== undefined && { name: String(name).trim() }),
+        ...(trimmedSku !== undefined && { sku: trimmedSku || generateSku() }),
         ...(description !== undefined && { description }),
         ...(price !== undefined && { price }),
         ...(stock !== undefined && { stock }),
@@ -254,7 +333,10 @@ export const deleteProduct = async (req: AuthRequest, res: Response) => {
     const id = String(req.params.id);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const businessId = await getUserBusinessId(userId);

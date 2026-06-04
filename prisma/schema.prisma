@@ -90,14 +90,11 @@ model Product {
   id          String   @id @default(uuid())
 
   name        String
-  sku         String   @unique
-
+  sku         String?
   description String?
 
-  price       Decimal  @db.Decimal(10,2)
-
+  price       Decimal  @db.Decimal(10, 2)
   stock       Int      @default(0)
-
   minStock    Int      @default(5)
 
   imageUrl    String?
