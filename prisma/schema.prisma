@@ -11,6 +11,15 @@ enum UserRole {
   STAFF
 }
 
+enum BusinessType {
+  RETAIL
+  CLINIC
+  LAUNDRY
+  BARBERSHOP
+  RESTAURANT
+  OTHER
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -18,11 +27,15 @@ model User {
   password  String
   role      UserRole @default(OWNER)
 
-  createdAt DateTime @default(now())
-
   isVerified Boolean @default(false)
   otp        Otp[]
 
+  businessId    String?
+  business      Business? @relation("BusinessMembers", fields: [businessId], references: [id])
+
+  ownedBusiness Business? @relation("BusinessOwner")
+
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
@@ -36,4 +49,21 @@ model Otp {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model Business {
+  id          String       @id @default(uuid())
+  name        String
+  type        BusinessType @default(OTHER)
+  phone       String?
+  address     String?
+  description String?
+
+  ownerId     String       @unique
+  owner       User         @relation("BusinessOwner", fields: [ownerId], references: [id])
+
+  members     User[]       @relation("BusinessMembers")
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
