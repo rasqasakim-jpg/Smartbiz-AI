@@ -65,6 +65,8 @@ model Business {
   members     User[]       @relation("BusinessMembers")
   customers   Customer[]
 
+  products    Product[]
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -82,4 +84,29 @@ model Customer {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(uuid())
+
+  name        String
+  sku         String   @unique
+
+  description String?
+
+  price       Decimal  @db.Decimal(10,2)
+
+  stock       Int      @default(0)
+
+  minStock    Int      @default(5)
+
+  imageUrl    String?
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([businessId, sku])
 }
