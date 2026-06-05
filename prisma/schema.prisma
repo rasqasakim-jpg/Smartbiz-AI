@@ -26,6 +26,19 @@ enum InventoryMovementType {
   ADJUSTMENT
 }
 
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  QRIS
+  CARD
+  OTHER
+}
+
+enum TransactionStatus {
+  PAID
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -40,6 +53,8 @@ model User {
   business      Business? @relation("BusinessMembers", fields: [businessId], references: [id])
 
   ownedBusiness Business? @relation("BusinessOwner")
+
+  transactions  Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -74,6 +89,8 @@ model Business {
   products    Product[]
 
   inventoryMovements InventoryMovement[]
+  
+  transactions  Transaction[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -89,6 +106,8 @@ model Customer {
 
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  transactions  Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -112,6 +131,8 @@ model Product {
 
   inventoryMovements  InventoryMovement[]
 
+  transactionItems  TransactionItem[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -134,4 +155,46 @@ model InventoryMovement {
 
   @@index([businessId, createdAt])
   @@index([productId, createdAt])
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  invoiceNumber   String
+  subtotal        Decimal           @db.Decimal(10, 2)
+  discountTotal   Decimal           @default(0) @db.Decimal(10, 2)
+  grandTotal      Decimal           @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod     @default(CASH)
+  status          TransactionStatus @default(PAID)
+
+  customerId      String?
+  customer        Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdById     String
+  createdBy       User              @relation(fields: [createdById], references: [id])
+
+  items           TransactionItem[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, createdAt])
+}
+
+model TransactionItem {
+  id            String      @id @default(uuid())
+  quantity      Int
+  price         Decimal     @db.Decimal(10, 2)
+  subtotal      Decimal     @db.Decimal(10, 2)
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+
+  createdAt     DateTime    @default(now())
 }
