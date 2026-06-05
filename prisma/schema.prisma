@@ -20,6 +20,12 @@ enum BusinessType {
   OTHER
 }
 
+enum InventoryMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -67,6 +73,8 @@ model Business {
 
   products    Product[]
 
+  inventoryMovements InventoryMovement[]
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -102,8 +110,28 @@ model Product {
   businessId  String
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
+  inventoryMovements  InventoryMovement[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@unique([businessId, sku])
+}
+
+model InventoryMovement {
+  id        String                @id @default(uuid())
+  type      InventoryMovementType
+  quantity  Int
+  note      String?
+
+  productId String
+  product   Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  businessId String
+  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime              @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([productId, createdAt])
 }

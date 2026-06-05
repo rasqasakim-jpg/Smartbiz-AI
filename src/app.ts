@@ -7,6 +7,7 @@ import userRoutes from "./modules/user/user.routes"
 import businessRoutes from "./modules/business/business.routes"
 import customerRoutes from "./modules/customer/customer.routes"
 import productRoutes from "./modules/product/product.routes"
+import inventoryRoutes from "./modules/inventory/inventory.routes"
 
 const app = express();
 
@@ -18,6 +19,7 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
+app.use("/api/inventory", inventoryRoutes)
 app.use("/api/products", productRoutes)
 app.use("/api/customers", customerRoutes)
 app.use("/api/businesses", businessRoutes)
