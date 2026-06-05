@@ -9,6 +9,7 @@ import customerRoutes from "./modules/customer/customer.routes"
 import productRoutes from "./modules/product/product.routes"
 import inventoryRoutes from "./modules/inventory/inventory.routes"
 import transactionRoutes from "./modules/transaction/transaction.routes"
+import dashboardRoutes from "./modules/dashboard/dashboard.routes"
 
 const app = express();
 
@@ -20,6 +21,7 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
+app.use("/api/dashboard", dashboardRoutes)
 app.use("/api/transactions", transactionRoutes)
 app.use("/api/inventory", inventoryRoutes)
 app.use("/api/products", productRoutes)
