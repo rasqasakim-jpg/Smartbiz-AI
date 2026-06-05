@@ -24,7 +24,10 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     const { customerId, items, discountTotal, paymentMethod } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -45,7 +48,10 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
 
     if (customerId) {
       const customer = await prisma.customer.findFirst({
-        where: { id: customerId, businessId },
+        where: {
+          id: customerId,
+          businessId,
+        },
       });
 
       if (!customer) {
@@ -60,7 +66,9 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
 
     const products = await prisma.product.findMany({
       where: {
-        id: { in: productIds },
+        id: {
+          in: productIds,
+        },
         businessId,
       },
     });
@@ -72,7 +80,9 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const productMap = new Map(products.map((product) => [product.id, product]));
+    const productMap = new Map(
+      products.map((product) => [product.id, product])
+    );
 
     let subtotal = 0;
 
@@ -156,7 +166,9 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
         });
 
         await tx.product.update({
-          where: { id: productId },
+          where: {
+            id: productId,
+          },
           data: {
             stock: {
               decrement: quantity,
@@ -176,7 +188,9 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       }
 
       return tx.transaction.findUnique({
-        where: { id: createdTransaction.id },
+        where: {
+          id: createdTransaction.id,
+        },
         include: {
           customer: true,
           items: {
@@ -206,8 +220,44 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const search = req.query.search ? String(req.query.search) : undefined;
+    const customerId = req.query.customerId
+      ? String(req.query.customerId)
+      : undefined;
+
+    const from = req.query.from ? new Date(String(req.query.from)) : undefined;
+    const to = req.query.to ? new Date(String(req.query.to)) : undefined;
+
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (page < 1 || limit < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Page dan limit harus lebih dari 0",
+      });
+    }
+
+    if (from && Number.isNaN(from.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Format tanggal from tidak valid",
+      });
+    }
+
+    if (to && Number.isNaN(to.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Format tanggal to tidak valid",
+      });
     }
 
     const businessId = await getUserBusinessId(userId);
@@ -219,8 +269,50 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const whereClause = {
+      businessId,
+
+      ...(customerId && {
+        customerId,
+      }),
+
+      ...(search && {
+        OR: [
+          {
+            invoiceNumber: {
+              contains: search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            customer: {
+              name: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        ],
+      }),
+
+      ...((from || to) && {
+        createdAt: {
+          ...(from && {
+            gte: from,
+          }),
+          ...(to && {
+            lte: to,
+          }),
+        },
+      }),
+    };
+
+    const total = await prisma.transaction.count({
+      where: whereClause,
+    });
+
     const transactions = await prisma.transaction.findMany({
-      where: { businessId },
+      where: whereClause,
       include: {
         customer: true,
         items: {
@@ -232,12 +324,20 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
     return res.json({
       success: true,
       message: "List transaction berhasil diambil",
       data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error("GET_TRANSACTIONS_ERROR:", error);
@@ -254,7 +354,10 @@ export const getTransactionById = async (req: AuthRequest, res: Response) => {
     const id = String(req.params.id);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const businessId = await getUserBusinessId(userId);
