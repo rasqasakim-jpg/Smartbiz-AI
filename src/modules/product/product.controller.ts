@@ -1,6 +1,8 @@
 import { Response } from "express";
 import prisma from "../../config/prisma";
 import { AuthRequest } from "../../middleware/auth.middleware";
+import cloudinary from "../../config/cloudinary";
+import streamifier from "streamifier";
 
 const getUserBusinessId = async (userId: string) => {
   const user = await prisma.user.findUnique({
@@ -119,6 +121,92 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("CREATE_PRODUCT_ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const uploadProductImage = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+    const productId = String(req.params.id);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Image wajib diupload",
+      });
+    }
+
+    const file = req.file;
+
+    const businessId = await getUserBusinessId(userId);
+
+    if (!businessId) {
+      return res.status(400).json({
+        success: false,
+        message: "Business tidak ditemukan",
+      });
+    }
+
+    const product = await prisma.product.findFirst({
+      where: {
+        id: productId,
+        businessId,
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product tidak ditemukan",
+      });
+    }
+
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "smartbiz-ai/products",
+        },
+        (error, result) => {
+          if (error) return reject(error);
+
+          resolve(result);
+        }
+      );
+
+      streamifier.createReadStream(file.buffer).pipe(stream);
+    });
+
+    const updatedProduct = await prisma.product.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        imageUrl: uploadResult.secure_url,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Image product berhasil diupload",
+      data: updatedProduct,
+    });
+  } catch (error) {
+    console.error("UPLOAD_PRODUCT_IMAGE_ERROR:", error);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",
