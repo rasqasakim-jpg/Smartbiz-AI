@@ -44,7 +44,10 @@ model User {
   fullName  String
   email     String   @unique
   password  String
+  phone     String?
   role      UserRole @default(OWNER)
+
+  avatarUrl String?
 
   isVerified Boolean @default(false)
   otp        Otp[]
@@ -79,6 +82,8 @@ model Business {
   phone       String?
   address     String?
   description String?
+
+  logoUrl     String?
 
   ownerId     String       @unique
   owner       User         @relation("BusinessOwner", fields: [ownerId], references: [id])
