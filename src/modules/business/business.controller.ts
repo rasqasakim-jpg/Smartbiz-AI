@@ -55,7 +55,7 @@ export const createBusiness = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const business = await prisma.$transaction(async (tx: any) => {
+    const business = await prisma.$transaction(async (tx) => {
       const createdBusiness = await tx.business.create({
         data: {
           name,
