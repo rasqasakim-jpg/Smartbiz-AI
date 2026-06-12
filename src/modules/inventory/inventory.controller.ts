@@ -88,7 +88,7 @@ export const stockIn = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const movement = await tx.inventoryMovement.create({
         data: {
           type: "IN",
@@ -181,7 +181,7 @@ export const stockOut = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const movement = await tx.inventoryMovement.create({
         data: {
           type: "OUT",
@@ -290,7 +290,7 @@ export const adjustment = async (req: AuthRequest, res: Response) => {
 
     const difference = numberNewStock - product.stock;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const movement = await tx.inventoryMovement.create({
         data: {
           type: "ADJUSTMENT",
@@ -418,7 +418,7 @@ export const getLowStockProducts = async (req: AuthRequest, res: Response) => {
     });
 
     const lowStockProducts = products.filter(
-      (product) => product.stock <= product.minStock
+      (product: any) => product.stock <= product.minStock
     );
 
     return res.json({
